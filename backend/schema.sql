@@ -70,3 +70,13 @@ CREATE TABLE project_images(
     project_id INTEGER REFERENCES annotation_projects(id) ON DELETE CASCADE,
     image_id INTEGER REFERENCES images(id)
 );
+
+-- inserting the roles to be available when creating new accounts == similar to have enum Roles
+-- === ROLES ===
+INSERT INTO roles (name) VALUES 
+('admin'),
+('data specialist'),
+('annotator'),
+('ml engineer'),
+
+ON CONFLICT DO NOTHING;
