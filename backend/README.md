@@ -1,48 +1,90 @@
-To run this branch :
+# ML Data Platform - Backend Setup Guide
+
+
 ### Prerequisites
+- **Node.js** 
+- **PostgreSQL** 
 
-- Node.js 
-- PostgreSQL: select thes from the checkboxes when installing  
-    - pgBouncer
-    - psqlODBC (64 bit)
+### PostgreSQL Installation
+During PostgreSQL installation, make sure to select these components in Stack Builder:
+- **pgBouncer** (connection pooling)
+- **psqlODBC (64-bit)** (database driver)
 
-- run the postgreSQL 
-    Windows:
-        1. Press Win + R, type services.msc
-        2. Find PostgreSQL services (usually named):
-            postgresql-x64-16
-            PostgreSQL Server 16
-            postgresql-16
-        3. Right-click → Start (if stopped)
-        4. Or Right-click → Restart (if already running)
-    
-    macOS:
-        launch Postgres.app
+### Start PostgreSQL Service
 
-Clone the code and move to the backend directory in the terminal
+#### Windows:
+1. Press `Win + R`, type `services.msc`
+2. Find PostgreSQL services (usually named):
+   - `postgresql-x64-16`
+   - `PostgreSQL Server 16` 
+   - `postgresql-16`
+3. **Right-click → Start** (if stopped)
+4. Or **Right-click → Restart** (if already running)
 
-modify the .env to your database info [username,password -- the info when installing postgreSQL]
+#### macOS:
+- Launch **Postgres.app**
 
-build the dependencies: 
-    - In terminal run the command `npm install`
+---
 
-Setup database and schema:
-    1. Create database
-        In terminal run command `psql -U postgres -c "CREATE DATABASE ml_platform;"`
+## 📥 Installation Steps
 
-    2. Run schema
-        In terminal run command `psql -U postgres -d ml_platform -f schema.sql`
+### 1. Clone and Navigate
+```bash
+git clone <repository-url>
+cd ml-data-platform/backend
+```
 
-Now the database is ready to create users, register a new user before running the sample data.
+### 2. Configure Environment
+Copy and modify the `.env` file with your PostgreSQL credentials:
+```env
+DB_USER=your_postgres_username
+DB_PASSWORD=your_postgres_password
+DB_HOST=localhost
+DB_NAME=ml_platform
+DB_PORT=5432
+JWT_SECRET=your_jwt_secret_here
+```
 
-run the server [nodemon index.js or node index.js] and register, use the components ...etc.
+### 3. Install Dependencies
+```bash
+npm install
+```
 
+### 4. Database Setup
 
-after registering a user to fill the database with sample data:
-        In terminal run command `psql -U postgres -d ml_platform -f "sample data.sql"`
+#### Create Database:
+```bash
+psql -U postgres -c "CREATE DATABASE ml_platform;"
+```
 
+#### Run Schema:
+```bash
+psql -U postgres -d ml_platform -f schema.sql
+```
 
+### 5. Start Server
+```bash
+# Development (with auto-restart)
+nodemon index.js
 
+```
 
+### 6. Register User & Load Sample Data
+1. **Register a user** first through the API
+2. **Load sample data**:
+```bash
+psql -U postgres -d ml_platform -f "sample data.sql"
+```
 
-[POSTMAN is convinet for now until frontend is ready, but it does not send the token automatically as in the browser so you need to copy the token from the login response and added it to the requests autharizaion headers [concatinate "Bearer " and token] ]
+---
+## Development Notes
+
+### API Testing with Postman
+Since Postman doesn't automatically handle tokens like browsers:
+
+1. **Login** to get JWT token from response
+2. **Copy the token** and add to Authorization header:
+   ```
+   Authorization: Bearer your_token_here
+   ```
+3. **Use this header** for all protected routes
