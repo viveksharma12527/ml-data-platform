@@ -1,8 +1,8 @@
 {
   "include": [
-    "frontend/src/**/*",
-    "shared/**/*",
-    "vt-backend/**/*"
+    "./src/**/*",
+    "../shared/**/*",
+    "../vt-backend/**/*"
   ],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
@@ -20,7 +20,7 @@
     "baseUrl": ".",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./frontend/src/*"],
+      "@/*": ["frontend/src/*"],
       "@shared/*": ["./shared/*"]
     }
   }
