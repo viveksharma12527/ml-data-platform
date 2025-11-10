@@ -1,0 +1,11 @@
+# Dependencies
+/node_modules
+
+# Build artifacts
+/dist
+
+# Environment variables
+.env
+
+# OS-specific
+.DS_Store
