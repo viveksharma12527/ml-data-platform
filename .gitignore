@@ -9,3 +9,6 @@
 
 # OS-specific
 .DS_Store
+
+# IDE CONFIG
+.idea
