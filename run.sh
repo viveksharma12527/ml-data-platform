@@ -15,15 +15,19 @@ npm install
 
 # 2. Set Up Environment Variables
 echo "Setting up environment variables..."
-if [ ! -f .env ]; then
-  echo "DATABASE_URL=\"postgres://user:password@localhost:5432/ml-data-platform\"" > .env
-fi
+echo "DATABASE_URL=\"postgres://user:password@localhost:5434/ml-data-platform\"" > .env
+source .env
 
 # 3. Start the Database
 echo "Starting the database..."
+docker-compose down --volumes
 docker-compose up -d
 
-# 4. Run the Application in Development Mode
+# 4. Push Schema to the Database
+echo "Pushing schema to the database..."
+npm run db:push
+
+# 5. Run the Application in Development Mode
 echo "Starting the application..."
 # Find and kill the process running on port 5006
 if lsof -i :5006 -t >/dev/null; then
