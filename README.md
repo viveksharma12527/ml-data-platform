@@ -2,7 +2,34 @@
 
 This is a full-stack application for managing and annotating machine learning data.
 
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/) (v18 or later recommended)
+- [Docker](https://docs.docker.com/get-docker/)
+
 ## How to Run
+
+### Quick Start: Automated Setup
+
+For a fast and easy setup, you can use the automated script. This will handle all the necessary steps, from installing dependencies to starting the application.
+
+```bash
+./run.sh
+```
+
+### Stopping the Application
+
+To stop the application and the database container, you can use the `stop.sh` script.
+
+```bash
+./stop.sh
+```
+
+### Manual Setup
+
+If you prefer to run the commands manually, follow the steps below.
 
 To run this project, you will need to execute a series of commands in your terminal.
 
@@ -44,3 +71,23 @@ After building the project, you can start it in production mode with this comman
 
 ```bash
 npm start
+
+### 6. Database Commands
+
+To interact with the PostgreSQL database, you can use the following commands.
+
+#### Start the Database
+
+This command will start the PostgreSQL container in detached mode.
+
+```bash
+docker-compose up -d
+```
+
+#### List Databases
+
+To see a list of all databases, run the following command:
+
+```bash
+docker exec -it ml-data-platform-db-1 psql -U user -d ml-data-platform -c "\l"
+```
