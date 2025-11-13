@@ -5,10 +5,12 @@ const router = express.Router();
 const authRoutes = require('./routes/auth');
 const projectManagementRoutes = require('./ProjectManagement/projectManagement.routes');
 const annotationToolRoutes = require('./AnnotationTool/annotation.routes');
+const labelTypesManagementRoutes = require('./LabelTypeManagement/labelTypeManagement.routes');
 
 
 router.use('/auth', authRoutes);
-router.use('/projectManagement', projectManagementRoutes);
+router.use('/projects', projectManagementRoutes);
 router.use('/annotation', annotationToolRoutes);
+router.use('/label-types', labelTypesManagementRoutes);
 
 module.exports = router;
