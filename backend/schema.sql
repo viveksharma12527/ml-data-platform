@@ -64,11 +64,12 @@ CREATE TABLE project_assignments (
     UNIQUE(project_id, annotator_id)
 );
 
-
 CREATE TABLE project_images(
     id SERIAL PRIMARY KEY,
     project_id INTEGER REFERENCES annotation_projects(id) ON DELETE CASCADE,
-    image_id INTEGER REFERENCES images(id)
+    image_id INTEGER REFERENCES images(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(project_id, image_id)  -- ← ADD THIS LINE
 );
 
 -- inserting the roles to be available when creating new accounts == similar to have enum Roles
