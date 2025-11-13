@@ -69,12 +69,10 @@ nodemon index.js
 
 ```
 
-### 6. Register User & Load Sample Data
+### 6. Register User
 1. **Register a user** first through the API
-2. **Load sample data**:
-```bash
-psql -U postgres -d ml_platform -f "sample data.sql"
-```
+2. **Login**:
+
 
 ---
 ## Development Notes
