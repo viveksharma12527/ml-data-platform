@@ -1,40 +1,118 @@
 const annotationService = require('./annotation.service');
 
 
-async function saveAnnotation(req, res){
-    try {
-      const annotator_id = req.user.id;
-      const { project_id, image_id, label_class_id } = req.body;
-      if (!project_id || !image_id)
-        return res.status(400).json({ error: 'Missing required fields'});
+// Save Annotation
+async function createAnnotation(req, res) {
+  try {
+    const annotationData = req.body;
+    const newAnnotation = await annotationService.createAnnotation(annotationData, req.user);
+    
+    res.status(201).json({
+        success: true,
+        data: newAnnotation,
+        message: 'Annotation saved successfully'
+    });
+  } catch (error) {
+      console.error('Error saving annotation:', error);
+      const statusCode = error.message.includes('not assigned') ? 403 : 
+                        error.message.includes('already annotated') ? 400 : 500;
+      res.status(statusCode).json({
+          success: false,
+          error: error.message
+      });
+  }
+}
+
+// Delete Annotation
+async function deleteAnnotation(req, res) {
+  try {
+    const { id } = req.params;
+    const deletedAnnotation = await annotationService.deleteAnnotation(id, req.user);
+    
+    res.json({
+        success: true,
+        data: deletedAnnotation,
+        message: 'Annotation deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting annotation:', error);
+    const statusCode = error.message.includes('not found') ? 404 : 
+                      error.message.includes('only delete') ? 403 : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+// Get Annotations for a Project
+async function getAnnotations(req, res) {
+  try {
+      const { projectId } = req.params;
+      const annotations = await annotationService.getAnnotations(projectId, req.user);
       
-      const annotation = await annotationService.saveAnnotation(
-        project_id,
-        image_id,
-        annotator_id,
-        label_class_id
-      );
+      res.json({
+          success: true,
+          data: annotations
+      });
+  } catch (error) {
+      console.error('Error fetching annotations:', error);
+      const statusCode = error.message.includes('not found') ? 404 : 
+                        error.message.includes('not assigned') ? 403 : 500;
+      res.status(statusCode).json({
+          success: false,
+          error: error.message
+      });
+  }
+}
 
-      res.status(201).json(annotation);
-    } catch (error) {
-        console.error(error)
-        return res.status(500).json({ message: 'Error failed to save annotation' });
-    }
-};
-
-
-async function getNextImage(req, res){
+// Get Annotation by ID
+async function getAnnotationById(req, res) {
     try {
-        const annotator_id = req.user.id;
-        const { project_id } = req.body;
-        if( !project_id || !annotator_id)
-            return res.status(400).json({ error: 'Missing required fields' });
-        const nextImage = await annotationService.getNextImage(project_id,annotator_id);
-        return res.status(200).json(nextImage);
+      const { id } = req.params;
+      const annotation = await annotationService.getAnnotationById(id, req.user);
+      
+      res.json({
+          success: true,
+          data: annotation
+      });
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({ message: 'Error failed to retrieve next image' });
+        console.error('Error fetching annotation:', error);
+        const statusCode = error.message.includes('not found') ? 404 : 
+                          error.message.includes('Access denied') ? 403 : 500;
+        res.status(statusCode).json({
+            success: false,
+            error: error.message
+        });
     }
-};
+}
 
-module.exports = { saveAnnotation, getNextImage};
+// Get Annotation Statistics
+async function getAnnotationStats(req, res) {
+  try {
+    const { projectId } = req.params;
+    const stats = await annotationService.getAnnotationStats(projectId, req.user);
+    
+    res.json({
+        success: true,
+        data: stats
+    });
+  } catch (error) {
+    console.error('Error fetching annotation statistics:', error);
+    const statusCode = error.message.includes('not found') ? 404 : 
+                      error.message.includes('not assigned') ? 403 : 500;
+    res.status(statusCode).json({
+        success: false,
+        error: error.message
+    });
+  }
+}
+
+
+module.exports = {
+  createAnnotation,
+  deleteAnnotation,
+  getAnnotations,
+  getAnnotationById,
+  getAnnotationStats
+};
