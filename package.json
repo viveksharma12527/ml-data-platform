@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx -r dotenv/config backend/index.ts",
+    "dev": "NODE_ENV=development tsx --env-file=.env backend/index.ts",
     "build": "vite build && esbuild backend/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",

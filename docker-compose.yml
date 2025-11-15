@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: ml-data-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ml-data-platform
+    ports:
+      - "5434:5432" # Porta esterna -> porta interna
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks:
+      - vt-network
+
   # MinIO Object Storage
   minio:
     image: minio/minio:latest
@@ -23,7 +39,7 @@ services:
       timeout: 20s
       retries: 3
 
-  # MinIO Client (creates bucket at startup)
+  # MinIO Client (bucket init)
   minio-client:
     image: minio/mc:latest
     container_name: vt-annotator-mc
@@ -40,10 +56,14 @@ services:
     networks:
       - vt-network
 
+# Volumes
 volumes:
+  db:
+    driver: local
   minio_data:
     driver: local
 
+# Network
 networks:
   vt-network:
     driver: bridge
