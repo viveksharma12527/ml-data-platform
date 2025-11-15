@@ -3,8 +3,40 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import { insertUserSchema, insertProjectSchema, insertLabelSchema, insertImageSchema, insertAnnotationSchema } from "@shared/schema";
+import multer from 'multer';
+import { uploadFile, deleteFile, initializeMinio } from './services/minio';
+import { extractImagesFromZip } from './services/zip';
+
+// Configure multer for universal upload (images + ZIP)
+const uploadUniversal = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 1000 * 1024 * 1024, // 1GB limit (for ZIP files)
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images and ZIP files
+    const isImage = file.mimetype.startsWith('image/');
+    const isZip = file.mimetype === 'application/zip' ||
+        file.mimetype === 'application/x-zip-compressed' ||
+        file.originalname.toLowerCase().endsWith('.zip');
+
+    if (!isImage && !isZip) {
+      cb(new Error('Only image and ZIP files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize MinIO on startup
+  try {
+    await initializeMinio();
+    console.log('MinIO initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize MinIO:', error);
+  }
+
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -232,26 +264,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image routes
-  app.post("/api/projects/:projectId/images", async (req, res) => {
-    try {
-      const userId = req.session?.userId;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
+  // Universal upload endpoint (images + ZIP) - SINGLE ENDPOINT FOR ALL UPLOADS
+  app.post("/api/projects/:projectId/images/upload",
+      uploadUniversal.array('images', 50),
+      async (req, res) => {
+        try {
+          const userId = req.session?.userId;
+          if (!userId) {
+            return res.status(401).json({ error: "Not authenticated" });
+          }
+
+          const files = req.files as Express.Multer.File[];
+          if (!files || files.length === 0) {
+            return res.status(400).json({ error: "No files uploaded" });
+          }
+
+          console.log(`Processing ${files.length} file(s)`);
+
+          const uploadedImages = [];
+          const errors = [];
+
+          // Process each file
+          for (const file of files) {
+            // Check if it's a ZIP file
+            const isZip = file.mimetype === 'application/zip' ||
+                file.mimetype === 'application/x-zip-compressed' ||
+                file.originalname.toLowerCase().endsWith('.zip');
+
+            if (isZip) {
+              // Extract and upload images from ZIP
+              console.log(`Extracting ZIP: ${file.originalname} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+              try {
+                const extractedFiles = extractImagesFromZip(file.buffer);
+                console.log(`Found ${extractedFiles.length} images in ZIP`);
+
+                for (const extractedFile of extractedFiles) {
+                  try {
+                    const url = await uploadFile(
+                        extractedFile.buffer,
+                        extractedFile.filename,
+                        extractedFile.mimetype
+                    );
+
+                    const image = await storage.createImage({
+                      projectId: req.params.projectId,
+                      filename: extractedFile.filename,
+                      url: url,
+                    });
+
+                    uploadedImages.push(image);
+                    console.log(`Uploaded from ZIP: ${extractedFile.filename}`);
+                  } catch (error: any) {
+                    console.error(`Failed: ${extractedFile.filename}:`, error.message);
+                    errors.push({
+                      filename: extractedFile.filename,
+                      error: error.message,
+                    });
+                  }
+                }
+              } catch (error: any) {
+                console.error(`Failed to process ZIP ${file.originalname}:`, error.message);
+                errors.push({
+                  filename: file.originalname,
+                  error: `ZIP extraction failed: ${error.message}`,
+                });
+              }
+            } else {
+              // Upload single image
+              try {
+                const url = await uploadFile(
+                    file.buffer,
+                    file.originalname,
+                    file.mimetype
+                );
+
+                const image = await storage.createImage({
+                  projectId: req.params.projectId,
+                  filename: file.originalname,
+                  url: url,
+                });
+
+                uploadedImages.push(image);
+                console.log(`Uploaded: ${file.originalname}`);
+              } catch (error: any) {
+                console.error(`Failed: ${file.originalname}:`, error.message);
+                errors.push({
+                  filename: file.originalname,
+                  error: error.message,
+                });
+              }
+            }
+          }
+
+          console.log(`Upload complete: ${uploadedImages.length} success, ${errors.length} failed`);
+
+          res.json({
+            success: uploadedImages.length,
+            failed: errors.length,
+            images: uploadedImages,
+            errors: errors,
+          });
+        } catch (error: any) {
+          console.error("Upload error:", error);
+          res.status(500).json({ error: error.message || "Failed to upload files" });
+        }
       }
-
-      const data = insertImageSchema.parse({
-        projectId: req.params.projectId,
-        filename: req.body.filename,
-        url: req.body.url,
-      });
-
-      const image = await storage.createImage(data);
-      res.json(image);
-    } catch (error: any) {
-      console.error("Create image error:", error);
-      res.status(400).json({ error: error.message || "Failed to create image" });
-    }
-  });
+  );
 
   app.get("/api/projects/:projectId/images", async (req, res) => {
     try {
@@ -260,6 +379,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Get images error:", error);
       res.status(500).json({ error: "Failed to get images" });
+    }
+  });
+
+  // Delete image (with MinIO cleanup)
+  app.delete("/api/images/:id", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      // Get image to extract filename
+      const image = await storage.getImage(req.params.id);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      // Extract filename from URL (MinIO URLs end with the object name)
+      const urlParts = image.url.split('/');
+      const filename = urlParts[urlParts.length - 1];
+
+      if (filename) {
+        try {
+          await deleteFile(filename);
+          console.log(`Deleted file from MinIO: ${filename}`);
+        } catch (error) {
+          console.warn("Could not delete file from MinIO:", error);
+          // Continue anyway - delete from DB even if MinIO deletion fails
+        }
+      }
+
+      // Delete from database
+      await storage.deleteImage(req.params.id);
+
+      res.json({ message: "Image deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete image error:", error);
+      res.status(500).json({ error: "Failed to delete image" });
     }
   });
 

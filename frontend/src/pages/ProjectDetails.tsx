@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogOut, ArrowLeft, Plus, X, Upload, Image as ImageIcon, Users, Tag, AlertCircle } from 'lucide-react';
+import { LogOut, ArrowLeft, Plus, X, Image as ImageIcon, Users, Tag, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ImageUploadZone } from '@/components/ImageUploadZone';
 
 interface User {
     id: string;
@@ -73,8 +74,6 @@ export default function ProjectDetail() {
     const [isAddingLabel, setIsAddingLabel] = useState(false);
     const [isLabelDialogOpen, setIsLabelDialogOpen] = useState(false);
 
-    const [imageUrl, setImageUrl] = useState('');
-    const [imageFilename, setImageFilename] = useState('');
     const [isAddingImage, setIsAddingImage] = useState(false);
     const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
 
@@ -254,54 +253,82 @@ export default function ProjectDetail() {
         }
     };
 
-    const handleAddImage = async () => {
-        if (!imageUrl.trim() || !imageFilename.trim()) {
-            toast({
-                title: 'Error',
-                description: 'Please enter both URL and filename',
-                variant: 'destructive',
-            });
-            return;
-        }
-
+    const handleBulkUpload = async (files: File[]) => {
         setIsAddingImage(true);
 
         try {
-            const response = await fetch(`/api/projects/${projectId}/images`, {
+            const formData = new FormData();
+
+
+            files.forEach(file => {
+                formData.append('images', file);
+            });
+
+            const response = await fetch(`/api/projects/${projectId}/images/upload`, {
                 method: 'POST',
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filename: imageFilename,
-                    url: imageUrl,
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to add image');
+                throw new Error(data.error || 'Failed to upload files');
             }
 
-            const newImage = await response.json();
-            setImages([...images, newImage]);
-            setImageUrl('');
-            setImageFilename('');
-            setIsImageDialogOpen(false);
+            const result = await response.json();
+
+            // Add uploaded images to state
+            setImages([...images, ...result.images]);
 
             toast({
                 title: 'Success',
-                description: 'Image added successfully',
+                description: `${result.success} images uploaded successfully${result.failed > 0 ? `, ${result.failed} failed` : ''}`,
             });
+
+            // Show errors if any
+            if (result.errors.length > 0) {
+                console.error('Upload errors:', result.errors);
+            }
+
+            setIsImageDialogOpen(false);
         } catch (err: any) {
             toast({
                 title: 'Error',
-                description: err.message || 'Failed to add image',
+                description: err.message || 'Failed to upload files',
                 variant: 'destructive',
             });
         } finally {
             setIsAddingImage(false);
+        }
+    };
+
+    const handleDeleteImage = async (imageId: string) => {
+        if (!confirm('Are you sure you want to delete this image?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/images/${imageId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete image');
+            }
+
+            setImages(images.filter(img => img.id !== imageId));
+
+            toast({
+                title: 'Success',
+                description: 'Image deleted successfully',
+            });
+        } catch (err: any) {
+            toast({
+                title: 'Error',
+                description: err.message || 'Failed to delete image',
+                variant: 'destructive',
+            });
         }
     };
 
@@ -606,56 +633,25 @@ export default function ProjectDetail() {
                                     <DialogTrigger asChild>
                                         <Button className="gap-2" data-testid="button-add-image">
                                             <Plus className="w-4 h-4" />
-                                            Add Image
+                                            Upload Images
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent>
+                                    <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                                         <DialogHeader>
-                                            <DialogTitle>Add New Image</DialogTitle>
+                                            <DialogTitle>Upload Images</DialogTitle>
                                             <DialogDescription>
-                                                Add an image URL to this project
+                                                Upload multiple images or a ZIP file containing images
                                             </DialogDescription>
                                         </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="image-filename">Filename</Label>
-                                                <Input
-                                                    id="image-filename"
-                                                    placeholder="e.g., dog_001.jpg"
-                                                    value={imageFilename}
-                                                    onChange={(e) => setImageFilename(e.target.value)}
-                                                    disabled={isAddingImage}
-                                                    data-testid="input-image-filename"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="image-url">Image URL</Label>
-                                                <Input
-                                                    id="image-url"
-                                                    placeholder="e.g., https://example.com/image.jpg"
-                                                    value={imageUrl}
-                                                    onChange={(e) => setImageUrl(e.target.value)}
-                                                    disabled={isAddingImage}
-                                                    data-testid="input-image-url"
-                                                />
-                                            </div>
+                                        <div className="py-4">
+                                            <ImageUploadZone
+                                                onFilesSelected={handleBulkUpload}
+                                                maxFiles={1000}
+                                                maxFileSize={20}
+                                                acceptZip={true}
+                                                disabled={isAddingImage}
+                                            />
                                         </div>
-                                        <DialogFooter>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setIsImageDialogOpen(false)}
-                                                disabled={isAddingImage}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button
-                                                onClick={handleAddImage}
-                                                disabled={isAddingImage}
-                                                data-testid="button-create-image"
-                                            >
-                                                {isAddingImage ? 'Adding...' : 'Add Image'}
-                                            </Button>
-                                        </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
                             </div>
@@ -666,11 +662,11 @@ export default function ProjectDetail() {
                                         <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                                         <h3 className="text-lg font-medium mb-2">No images yet</h3>
                                         <p className="text-muted-foreground mb-4">
-                                            Add images to start annotating
+                                            Upload images to start annotating
                                         </p>
                                         <Button onClick={() => setIsImageDialogOpen(true)}>
                                             <Plus className="w-4 h-4 mr-2" />
-                                            Add Image
+                                            Upload Images
                                         </Button>
                                     </CardContent>
                                 </Card>
@@ -679,12 +675,25 @@ export default function ProjectDetail() {
                                     {images.map((image) => (
                                         <Card key={image.id} data-testid={`card-image-${image.id}`}>
                                             <CardContent className="p-4">
-                                                <img
-                                                    src={image.url}
-                                                    alt={image.filename}
-                                                    className="w-full h-48 object-cover rounded-lg mb-2"
-                                                />
+                                                <div className="relative group">
+                                                    <img
+                                                        src={image.url}
+                                                        alt={image.filename}
+                                                        className="w-full h-48 object-cover rounded-lg mb-2"
+                                                    />
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => handleDeleteImage(image.id)}
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                                 <p className="text-sm font-medium truncate">{image.filename}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {new Date(image.uploadedAt).toLocaleDateString()}
+                                                </p>
                                             </CardContent>
                                         </Card>
                                     ))}
