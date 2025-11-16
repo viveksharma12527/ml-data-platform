@@ -21,6 +21,7 @@ export interface IStorage {
   getProjectsByCreator(userId: string): Promise<Project[]>;
   getProjectsByAnnotator(userId: string): Promise<Project[]>;
   createProject(project: InsertProject): Promise<Project>;
+  getProjectProgress(projectId: string): Promise<{ totalImages: number, annotatedImages: number }>;
   updateProjectStatus(id: string, status: "not_started" | "in_progress" | "completed"): Promise<void>;
 
   // Label methods
@@ -82,7 +83,14 @@ export class DbStorage implements IStorage {
         .innerJoin(projects, eq(projectAssignments.projectId, projects.id))
         .where(eq(projectAssignments.userId, userId));
 
-    return assignments.map((a: { project: Project }) => a.project);
+    const projectsWithProgress = await Promise.all(
+        assignments.map(async (a) => {
+          const progress = await this.getProjectProgress(a.project.id);
+          return { ...a.project, ...progress };
+        })
+    );
+
+    return projectsWithProgress;
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
@@ -92,6 +100,20 @@ export class DbStorage implements IStorage {
 
   async updateProjectStatus(id: string, status: "not_started" | "in_progress" | "completed"): Promise<void> {
     await db.update(projects).set({ status }).where(eq(projects.id, id));
+  }
+
+  async getProjectProgress(projectId: string): Promise<{ totalImages: number, annotatedImages: number }> {
+    const totalImages = await db.select().from(images).where(eq(images.projectId, projectId));
+    const annotatedImages = await db
+        .selectDistinct({ id: images.id })
+        .from(images)
+        .innerJoin(annotations, eq(images.id, annotations.imageId))
+        .where(eq(images.projectId, projectId));
+
+    return {
+      totalImages: totalImages.length,
+      annotatedImages: annotatedImages.length,
+    };
   }
 
   // Label methods

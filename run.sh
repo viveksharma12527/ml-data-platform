@@ -20,8 +20,15 @@ source .env
 
 # 3. Start the Database
 echo "Starting the database..."
-docker-compose down --volumes
+# Check if the database volume exists
+if [ -z "$(docker volume ls -q -f name=ml-data-platform_db)" ]; then
+  echo "Database volume not found, creating new database..."
+  docker-compose down --volumes
+fi
 docker-compose up -d
+
+echo "Waiting for the database to be ready..."
+sleep 10
 
 # 4. Push Schema to the Database
 echo "Pushing schema to the database..."

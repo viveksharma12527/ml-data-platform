@@ -38,6 +38,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Authentication routes
+  /**
+   * @swagger
+   * /api/auth/register:
+   *   post:
+   *     summary: Register a new user
+   *     tags: [Auth]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/InsertUser'
+   *     responses:
+   *       200:
+   *         description: The user was successfully created
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   *       400:
+   *         description: Bad request
+   */
   app.post("/api/auth/register", async (req, res) => {
     try {
       const data = insertUserSchema.parse(req.body);
@@ -66,6 +88,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     summary: Login a user
+   *     tags: [Auth]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               email:
+   *                 type: string
+   *               password:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: The user was successfully logged in
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
@@ -100,6 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/auth/logout:
+   *   post:
+   *     summary: Logout a user
+   *     tags: [Auth]
+   *     responses:
+   *       200:
+   *         description: The user was successfully logged out
+   *       500:
+   *         description: Server error
+   */
   app.post("/api/auth/logout", (req, res) => {
     req.session?.destroy((err) => {
       if (err) {
@@ -109,6 +172,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  /**
+   * @swagger
+   * /api/auth/me:
+   *   get:
+   *     summary: Get the current user
+   *     tags: [Auth]
+   *     responses:
+   *       200:
+   *         description: The current user
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   *       401:
+   *         description: Unauthorized
+   */
   app.get("/api/auth/me", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -130,6 +209,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User routes
+  /**
+   * @swagger
+   * /api/users:
+   *   get:
+   *     summary: Get all annotators
+   *     tags: [Users]
+   *     responses:
+   *       200:
+   *         description: A list of annotators
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/User'
+   *       401:
+   *         description: Unauthorized
+   *       403:
+   *         description: Forbidden
+   */
   app.get("/api/users", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -158,6 +257,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Project routes (Data Specialist)
+  /**
+   * @swagger
+   * /api/projects:
+   *   post:
+   *     summary: Create a new project
+   *     tags: [Projects]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/InsertProject'
+   *     responses:
+   *       200:
+   *         description: The project was successfully created
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Project'
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   app.post("/api/projects", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -178,6 +301,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/projects:
+   *   get:
+   *     summary: Get all projects for the current user
+   *     tags: [Projects]
+   *     responses:
+   *       200:
+   *         description: A list of projects
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Project'
+   *       401:
+   *         description: Unauthorized
+   */
   app.get("/api/projects", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -204,6 +345,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/projects/{id}:
+   *   get:
+   *     summary: Get a project by ID
+   *     tags: [Projects]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     responses:
+   *       200:
+   *         description: The project
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Project'
+   *       404:
+   *         description: Project not found
+   */
   app.get("/api/projects/:id", async (req, res) => {
     try {
       const project = await storage.getProject(req.params.id);
@@ -218,6 +382,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Label routes
+  /**
+   * @swagger
+   * /api/projects/{projectId}/labels:
+   *   post:
+   *     summary: Create a new label for a project
+   *     tags: [Labels]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/InsertLabel'
+   *     responses:
+   *       200:
+   *         description: The label was successfully created
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Label'
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   app.post("/api/projects/:projectId/labels", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -238,6 +433,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/projects/{projectId}/labels:
+   *   get:
+   *     summary: Get all labels for a project
+   *     tags: [Labels]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     responses:
+   *       200:
+   *         description: A list of labels
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Label'
+   */
   app.get("/api/projects/:projectId/labels", async (req, res) => {
     try {
       const labels = await storage.getLabelsByProject(req.params.projectId);
@@ -248,6 +466,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/labels/{id}:
+   *   delete:
+   *     summary: Delete a label by ID
+   *     tags: [Labels]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The label ID
+   *     responses:
+   *       200:
+   *         description: The label was successfully deleted
+   *       401:
+   *         description: Unauthorized
+   *       500:
+   *         description: Server error
+   */
   app.delete("/api/labels/:id", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -264,6 +503,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image routes
+  /**
+   * @swagger
+   * /api/projects/{projectId}/images/upload:
+   *   post:
+   *     summary: Upload images or a ZIP file of images to a project
+   *     tags: [Images]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               images:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   format: binary
+   *     responses:
+   *       200:
+   *         description: The images were successfully uploaded
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   // Universal upload endpoint (images + ZIP) - SINGLE ENDPOINT FOR ALL UPLOADS
   app.post("/api/projects/:projectId/images/upload",
       uploadUniversal.array('images', 50),
@@ -372,6 +644,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
   );
 
+  /**
+   * @swagger
+   * /api/projects/{projectId}/images:
+   *   get:
+   *     summary: Get all images for a project
+   *     tags: [Images]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     responses:
+   *       200:
+   *         description: A list of images
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Image'
+   */
   app.get("/api/projects/:projectId/images", async (req, res) => {
     try {
       const images = await storage.getImagesByProject(req.params.projectId);
@@ -382,6 +677,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/images/{id}:
+   *   delete:
+   *     summary: Delete an image by ID
+   *     tags: [Images]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The image ID
+   *     responses:
+   *       200:
+   *         description: The image was successfully deleted
+   *       401:
+   *         description: Unauthorized
+   *       404:
+   *         description: Image not found
+   *       500:
+   *         description: Server error
+   */
   // Delete image (with MinIO cleanup)
   app.delete("/api/images/:id", async (req, res) => {
     try {
@@ -421,6 +739,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Annotation routes
+  /**
+   * @swagger
+   * /api/annotations:
+   *   post:
+   *     summary: Create a new annotation
+   *     tags: [Annotations]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/InsertAnnotation'
+   *     responses:
+   *       200:
+   *         description: The annotation was successfully created
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Annotation'
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   app.post("/api/annotations", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -441,6 +783,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/images/{imageId}/annotations:
+   *   get:
+   *     summary: Get all annotations for an image
+   *     tags: [Annotations]
+   *     parameters:
+   *       - in: path
+   *         name: imageId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The image ID
+   *     responses:
+   *       200:
+   *         description: A list of annotations
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Annotation'
+   */
   app.get("/api/images/:imageId/annotations", async (req, res) => {
     try {
       const annotations = await storage.getAnnotationsByImage(req.params.imageId);
@@ -452,6 +817,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Project assignment routes
+  /**
+   * @swagger
+   * /api/projects/{projectId}/assign:
+   *   post:
+   *     summary: Assign a user to a project
+   *     tags: [Projects]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: The user was successfully assigned to the project
+   *       400:
+   *         description: Bad request
+   *       401:
+   *         description: Unauthorized
+   */
   app.post("/api/projects/:projectId/assign", async (req, res) => {
     try {
       const userId = req.session?.userId;
@@ -471,6 +866,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+   * @swagger
+   * /api/projects/{projectId}/assignments:
+   *   get:
+   *     summary: Get all assignments for a project
+   *     tags: [Projects]
+   *     parameters:
+   *       - in: path
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         required: true
+   *         description: The project ID
+   *     responses:
+   *       200:
+   *         description: A list of assignments
+   *       401:
+   *         description: Unauthorized
+   */
   app.get("/api/projects/:projectId/assignments", async (req, res) => {
     try {
       const userId = req.session?.userId;
