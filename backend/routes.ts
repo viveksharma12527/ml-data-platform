@@ -696,23 +696,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
    *         schema:
    *           type: string
    *           enum: [uploadedAt, projectName]
-   *         description: Sort by field (default: uploadedAt)
+   *         description: "Sort by field (default: uploadedAt)"
    *       - in: query
    *         name: sortOrder
    *         schema:
    *           type: string
    *           enum: [asc, desc]
-   *         description: Sort order (default: desc)
+   *         description: "Sort order (default: desc)"
    *       - in: query
    *         name: limit
    *         schema:
    *           type: integer
-   *         description: Pagination limit (default: 50)
+   *         description: "Pagination limit (default: 50)"
    *       - in: query
    *         name: offset
    *         schema:
    *           type: integer
-   *         description: Pagination offset (default: 0)
+   *         description: "Pagination offset (default: 0)"
    *     responses:
    *       200:
    *         description: Portfolio images with statistics

@@ -75,6 +75,41 @@ const options = {
             },
           },
         },
+        PortfolioImage: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+            },
+            url: {
+              type: 'string',
+            },
+            projectName: {
+              type: 'string',
+            },
+            uploadedAt: {
+              type: 'string',
+              format: 'date-time',
+            },
+            annotationCount: {
+              type: 'integer',
+            },
+          },
+        },
+        PortfolioStats: {
+          type: 'object',
+          properties: {
+            totalProjects: {
+              type: 'integer',
+            },
+            totalImages: {
+              type: 'integer',
+            },
+            totalAnnotations: {
+              type: 'integer',
+            },
+          },
+        },
       },
     },
   },
