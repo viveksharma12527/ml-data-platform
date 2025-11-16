@@ -407,6 +407,48 @@ export default function SpecialistDashboard() {
               </Dialog>
             </div>
 
+            {/* Portfolio Stats Card */}
+            {portfolioStats && (
+              <Card
+                className="hover-elevate cursor-pointer"
+                onClick={() => setLocation('/specialist/portfolio')}
+                data-testid="card-portfolio-stats"
+              >
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Image className="w-5 h-5" />
+                        Image Portfolio
+                      </CardTitle>
+                      <CardDescription>
+                        Browse and manage all your images across all projects
+                      </CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      View Portfolio
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{portfolioStats.totalImages}</div>
+                      <div className="text-sm text-muted-foreground">Total Images</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{portfolioStats.totalProjects}</div>
+                      <div className="text-sm text-muted-foreground">Projects</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{portfolioStats.annotatedImages}</div>
+                      <div className="text-sm text-muted-foreground">Annotated</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Error Alert */}
             {error && (
                 <Alert variant="destructive">
