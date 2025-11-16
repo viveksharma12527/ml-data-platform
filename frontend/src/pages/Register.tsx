@@ -26,7 +26,7 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      await register(formData);
+      await register({ ...formData, createdAt: new Date() });
       // Registrazione riuscita - vai al login
       setLocation('/login');
     } catch (err: any) {

@@ -33,6 +33,7 @@ export interface IStorage {
   getImage(id: string): Promise<Image | undefined>;
   createImage(image: InsertImage): Promise<Image>;
   getAllImages(): Promise<Image[]>;
+  deleteImage(id: string): Promise<void>;
 
   // Annotation methods
   getAnnotationsByImage(imageId: string): Promise<Annotation[]>;
@@ -184,6 +185,10 @@ export class DbStorage implements IStorage {
 
   async getProjectAssignments(projectId: string): Promise<ProjectAssignment[]> {
     return await db.select().from(projectAssignments).where(eq(projectAssignments.projectId, projectId));
+  }
+
+  async deleteImage(id: string): Promise<void> {
+    await db.delete(images).where(eq(images.id, id));
   }
 }
 
