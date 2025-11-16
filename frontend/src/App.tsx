@@ -10,6 +10,7 @@ import AnnotatorDashboard from "@/pages/AnnotatorDashboard";
 import AnnotationInterface from "@/pages/AnnotationInterface";
 import SpecialistDashboard from "@/pages/SpecialistDashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
+import ImagePortfolio from "@/pages/ImagePortfolio";
 
 function Router() {
   return (
