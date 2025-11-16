@@ -34,6 +34,21 @@ export interface IStorage {
   getImage(id: string): Promise<Image | undefined>;
   createImage(image: InsertImage): Promise<Image>;
   deleteImage(id: string): Promise<void>;
+  getPortfolioImages(userId: string, filters?: {
+    projectId?: string;
+    sortBy?: 'uploadedAt' | 'projectName';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    images: Array<Image & { projectName: string; projectId: string; isAnnotated: boolean }>;
+    total: number;
+    stats: {
+      totalImages: number;
+      totalProjects: number;
+      annotatedImages: number;
+    };
+  }>;
 
   // Annotation methods
   getAnnotationsByImage(imageId: string): Promise<Annotation[]>;
