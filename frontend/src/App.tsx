@@ -10,7 +10,6 @@ import AnnotatorDashboard from "@/pages/AnnotatorDashboard";
 import AnnotationInterface from "@/pages/AnnotationInterface";
 import SpecialistDashboard from "@/pages/SpecialistDashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
-import ImagePortfolio from "@/pages/ImagePortfolio";
 
 function Router() {
   return (
@@ -21,7 +20,6 @@ function Router() {
       <Route path="/annotator/dashboard" component={AnnotatorDashboard} />
       <Route path="/annotator/annotate/:id" component={AnnotationInterface} />
       <Route path="/specialist/dashboard" component={SpecialistDashboard} />
-      <Route path="/specialist/portfolio" component={ImagePortfolio} />
       <Route path="/specialist/projects/:id" component={ProjectDetails} />
       <Route component={NotFound} />
     </Switch>

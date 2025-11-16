@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { LogOut, Plus, Upload, X, FolderPlus, AlertCircle, Image } from 'lucide-react';
+import { LogOut, Plus, Upload, X, FolderPlus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -47,31 +47,9 @@ export default function SpecialistDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Portfolio stats state
-  const [portfolioStats, setPortfolioStats] = useState<{
-    totalImages: number;
-    totalProjects: number;
-    annotatedImages: number;
-  } | null>(null);
-
   useEffect(() => {
     loadData();
   }, []);
-
-  const loadPortfolioStats = async () => {
-    try {
-      const response = await fetch('/api/portfolio/images', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPortfolioStats(data.stats);
-      }
-    } catch (err) {
-      console.error('Failed to load portfolio stats:', err);
-    }
-  };
 
   const loadData = async () => {
     try {
@@ -106,9 +84,6 @@ export default function SpecialistDashboard() {
         const projectsData = await projectsResponse.json();
         setProjects(projectsData);
       }
-
-      // Fetch portfolio stats
-      await loadPortfolioStats();
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -263,16 +238,6 @@ export default function SpecialistDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLocation('/specialist/portfolio')}
-                  className="gap-2"
-                  data-testid="button-portfolio-nav"
-              >
-                <Image className="w-4 h-4" />
-                <span className="hidden sm:inline">Portfolio</span>
-              </Button>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">Hello</span>
                 <span className="text-sm font-medium">{user?.name}</span>
@@ -406,48 +371,6 @@ export default function SpecialistDashboard() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Portfolio Stats Card */}
-            {portfolioStats && (
-              <Card
-                className="hover-elevate cursor-pointer"
-                onClick={() => setLocation('/specialist/portfolio')}
-                data-testid="card-portfolio-stats"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Image className="w-5 h-5" />
-                        Image Portfolio
-                      </CardTitle>
-                      <CardDescription>
-                        Browse and manage all your images across all projects
-                      </CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      View Portfolio
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{portfolioStats.totalImages}</div>
-                      <div className="text-sm text-muted-foreground">Total Images</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{portfolioStats.totalProjects}</div>
-                      <div className="text-sm text-muted-foreground">Projects</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{portfolioStats.annotatedImages}</div>
-                      <div className="text-sm text-muted-foreground">Annotated</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Error Alert */}
             {error && (
