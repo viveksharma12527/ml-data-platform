@@ -25,6 +25,25 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *         name:
+ *           type: string
+ *         email:
+ *           type: string
+ *         role:
+ *           type: string
+ *         password:
+ *           type: string
+ */
+
 // Projects table
 export const projects = pgTable("projects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -63,6 +82,7 @@ export const images = pgTable("images", {
   projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   url: text("url").notNull(),
+  size: integer("size").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 

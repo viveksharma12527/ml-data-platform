@@ -32,6 +32,7 @@ export interface IStorage {
   getImagesByProject(projectId: string): Promise<Image[]>;
   getImage(id: string): Promise<Image | undefined>;
   createImage(image: InsertImage): Promise<Image>;
+  getAllImages(): Promise<Image[]>;
 
   // Annotation methods
   getAnnotationsByImage(imageId: string): Promise<Annotation[]>;
@@ -120,6 +121,10 @@ export class DbStorage implements IStorage {
   async createImage(insertImage: InsertImage): Promise<Image> {
     const [image] = await db.insert(images).values(insertImage).returning();
     return image;
+  }
+
+  async getAllImages(): Promise<Image[]> {
+    return await db.select().from(images);
   }
 
   // Annotation methods

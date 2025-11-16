@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LogOut, ArrowLeft, Plus, X, Upload, Image as ImageIcon, Users, Tag, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import ImageUploadDialog from '@/components/ImageUploadDialog';
 
 interface User {
     id: string;
@@ -605,57 +606,24 @@ export default function ProjectDetail() {
                                 <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
                                     <DialogTrigger asChild>
                                         <Button className="gap-2" data-testid="button-add-image">
-                                            <Plus className="w-4 h-4" />
-                                            Add Image
+                                            <Upload className="w-4 h-4" />
+                                            Upload Images
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Add New Image</DialogTitle>
+                                            <DialogTitle>Upload Images</DialogTitle>
                                             <DialogDescription>
-                                                Add an image URL to this project
+                                                Upload images from your local machine or from a URL.
                                             </DialogDescription>
                                         </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="image-filename">Filename</Label>
-                                                <Input
-                                                    id="image-filename"
-                                                    placeholder="e.g., dog_001.jpg"
-                                                    value={imageFilename}
-                                                    onChange={(e) => setImageFilename(e.target.value)}
-                                                    disabled={isAddingImage}
-                                                    data-testid="input-image-filename"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="image-url">Image URL</Label>
-                                                <Input
-                                                    id="image-url"
-                                                    placeholder="e.g., https://example.com/image.jpg"
-                                                    value={imageUrl}
-                                                    onChange={(e) => setImageUrl(e.target.value)}
-                                                    disabled={isAddingImage}
-                                                    data-testid="input-image-url"
-                                                />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setIsImageDialogOpen(false)}
-                                                disabled={isAddingImage}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button
-                                                onClick={handleAddImage}
-                                                disabled={isAddingImage}
-                                                data-testid="button-create-image"
-                                            >
-                                                {isAddingImage ? 'Adding...' : 'Add Image'}
-                                            </Button>
-                                        </DialogFooter>
+                                        <ImageUploadDialog
+                                            projectId={projectId}
+                                            onUploadComplete={() => {
+                                                setIsImageDialogOpen(false);
+                                                loadData();
+                                            }}
+                                        />
                                     </DialogContent>
                                 </Dialog>
                             </div>

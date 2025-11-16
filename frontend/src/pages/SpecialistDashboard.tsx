@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { LogOut, Plus, Upload, X, FolderPlus, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import ImageGrid from '@/components/ImageGrid';
+import { getCurrentUser, logout } from '@/services/auth';
+import { fetchProjects, createProject, createLabel } from '@/services/projects';
 
 interface User {
   id: string;
@@ -56,17 +59,7 @@ export default function SpecialistDashboard() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch current user
-      const userResponse = await fetch('/api/auth/me', {
-        credentials: 'include',
-      });
-
-      if (!userResponse.ok) {
-        setLocation('/login');
-        return;
-      }
-
-      const userData = await userResponse.json();
+      const userData = await getCurrentUser();
 
       if (userData.role !== 'data_specialist') {
         setLocation('/annotator/dashboard');
@@ -75,27 +68,18 @@ export default function SpecialistDashboard() {
 
       setUser(userData);
 
-      // Fetch projects
-      const projectsResponse = await fetch('/api/projects', {
-        credentials: 'include',
-      });
-
-      if (projectsResponse.ok) {
-        const projectsData = await projectsResponse.json();
-        setProjects(projectsData);
-      }
+      const projectsData = await fetchProjects();
+      setProjects(projectsData);
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
+      setLocation('/login');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    await logout();
     setLocation('/login');
   };
 
@@ -132,39 +116,14 @@ export default function SpecialistDashboard() {
     setIsCreating(true);
 
     try {
-      // 1. Create project
-      const projectResponse = await fetch('/api/projects', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: projectName,
-          description: projectDescription || null,
-          status: 'not_started',
-        }),
+      const project = await createProject({
+        name: projectName,
+        description: projectDescription || null,
+        status: 'not_started',
       });
 
-      if (!projectResponse.ok) {
-        const data = await projectResponse.json();
-        throw new Error(data.error || 'Failed to create project');
-      }
-
-      const project = await projectResponse.json();
-
-      // 2. Create labels
       for (const labelName of labels) {
-        await fetch(`/api/projects/${project.id}/labels`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: labelName,
-          }),
-        });
+        await createLabel(project.id, { name: labelName });
       }
 
       toast({
@@ -433,6 +392,12 @@ export default function SpecialistDashboard() {
                     ))}
                   </div>
               )}
+            </div>
+
+            {/* Image Grid */}
+            <div>
+              <h2 className="text-2xl font-bold mb-6">Image Grid</h2>
+              <ImageGrid />
             </div>
           </div>
         </main>

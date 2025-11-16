@@ -20,18 +20,17 @@ source .env
 
 # 3. Start the Database
 echo "Starting the database..."
-docker-compose down --volumes
+docker-compose down
 docker-compose up -d
 
-# 4. Push Schema to the Database
-echo "Pushing schema to the database..."
-npm run db:push
+# 4. Initialize the database
+./init-db.sh
 
 # 5. Run the Application in Development Mode
 echo "Starting the application..."
-# Find and kill the process running on port 5006
+# Check if the application is already running
 if lsof -i :5006 -t >/dev/null; then
-    echo "Port 5006 is in use. Killing the process..."
-    lsof -i :5006 -t | xargs kill -9
+    echo "Application is already running on port 5006."
+else
+    npm run dev
 fi
-npm run dev

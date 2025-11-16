@@ -15,5 +15,9 @@ docker-compose down
 
 # Stop the application
 echo "Stopping the application..."
-# This will kill the process running on port 5006
-lsof -ti:5006 | xargs kill
+if lsof -ti:5006 >/dev/null; then
+    lsof -ti:5006 | xargs kill
+    echo "Application stopped."
+else
+    echo "Application is not running."
+fi
