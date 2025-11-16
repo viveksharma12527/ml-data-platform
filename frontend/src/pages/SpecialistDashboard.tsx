@@ -58,6 +58,21 @@ export default function SpecialistDashboard() {
     loadData();
   }, []);
 
+  const loadPortfolioStats = async () => {
+    try {
+      const response = await fetch('/api/portfolio/images', {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPortfolioStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to load portfolio stats:', err);
+    }
+  };
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -91,6 +106,9 @@ export default function SpecialistDashboard() {
         const projectsData = await projectsResponse.json();
         setProjects(projectsData);
       }
+
+      // Fetch portfolio stats
+      await loadPortfolioStats();
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
     } finally {
