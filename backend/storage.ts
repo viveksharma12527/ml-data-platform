@@ -7,7 +7,7 @@ import {
   annotations, type InsertAnnotation, type Annotation,
   projectAssignments, type InsertProjectAssignment, type ProjectAssignment
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -21,6 +21,7 @@ export interface IStorage {
   getProjectsByCreator(userId: string): Promise<Project[]>;
   getProjectsByAnnotator(userId: string): Promise<Project[]>;
   createProject(project: InsertProject): Promise<Project>;
+  getProjectProgress(projectId: string): Promise<{ totalImages: number, annotatedImages: number }>;
   updateProjectStatus(id: string, status: "not_started" | "in_progress" | "completed"): Promise<void>;
 
   // Label methods
@@ -33,6 +34,21 @@ export interface IStorage {
   getImage(id: string): Promise<Image | undefined>;
   createImage(image: InsertImage): Promise<Image>;
   deleteImage(id: string): Promise<void>;
+  getPortfolioImages(userId: string, filters?: {
+    projectId?: string;
+    sortBy?: 'uploadedAt' | 'projectName';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    images: Array<Image & { projectName: string; projectId: string; isAnnotated: boolean }>;
+    total: number;
+    stats: {
+      totalImages: number;
+      totalProjects: number;
+      annotatedImages: number;
+    };
+  }>;
 
   // Annotation methods
   getAnnotationsByImage(imageId: string): Promise<Annotation[]>;
@@ -82,7 +98,14 @@ export class DbStorage implements IStorage {
         .innerJoin(projects, eq(projectAssignments.projectId, projects.id))
         .where(eq(projectAssignments.userId, userId));
 
-    return assignments.map((a: { project: Project }) => a.project);
+    const projectsWithProgress = await Promise.all(
+        assignments.map(async (a) => {
+          const progress = await this.getProjectProgress(a.project.id);
+          return { ...a.project, ...progress };
+        })
+    );
+
+    return projectsWithProgress;
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
@@ -92,6 +115,20 @@ export class DbStorage implements IStorage {
 
   async updateProjectStatus(id: string, status: "not_started" | "in_progress" | "completed"): Promise<void> {
     await db.update(projects).set({ status }).where(eq(projects.id, id));
+  }
+
+  async getProjectProgress(projectId: string): Promise<{ totalImages: number, annotatedImages: number }> {
+    const totalImages = await db.select().from(images).where(eq(images.projectId, projectId));
+    const annotatedImages = await db
+        .selectDistinct({ id: images.id })
+        .from(images)
+        .innerJoin(annotations, eq(images.id, annotations.imageId))
+        .where(eq(images.projectId, projectId));
+
+    return {
+      totalImages: totalImages.length,
+      annotatedImages: annotatedImages.length,
+    };
   }
 
   // Label methods
@@ -184,6 +221,100 @@ export class DbStorage implements IStorage {
 
   async deleteImage(id: string): Promise<void> {
     await db.delete(images).where(eq(images.id, id));
+  }
+
+  async getPortfolioImages(userId: string, filters?: {
+    projectId?: string;
+    sortBy?: 'uploadedAt' | 'projectName';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    images: Array<Image & { projectName: string; projectId: string; isAnnotated: boolean }>;
+    total: number;
+    stats: {
+      totalImages: number;
+      totalProjects: number;
+      annotatedImages: number;
+    };
+  }> {
+    const {
+      projectId,
+      sortBy = 'uploadedAt',
+      sortOrder = 'desc',
+      limit = 50,
+      offset = 0
+    } = filters || {};
+
+    // Build the base query for images with project and annotation data
+    const query = db
+      .select({
+        id: images.id,
+        projectId: images.projectId,
+        filename: images.filename,
+        url: images.url,
+        uploadedAt: images.uploadedAt,
+        projectName: projects.name,
+        isAnnotated: sql<boolean>`CASE WHEN ${annotations.id} IS NOT NULL THEN true ELSE false END`
+      })
+      .from(images)
+      .innerJoin(projects, eq(images.projectId, projects.id))
+      .leftJoin(annotations, eq(images.id, annotations.imageId))
+      .where(
+        and(
+          eq(projects.createdBy, userId),
+          projectId ? eq(projects.id, projectId) : undefined
+        )
+      );
+
+    // Apply ordering
+    const orderBy = sortOrder === 'asc' ? asc : desc;
+    if (sortBy === 'projectName') {
+      query.orderBy(orderBy(projects.name));
+    } else {
+      query.orderBy(orderBy(images.uploadedAt));
+    }
+
+    // Get paginated results
+    const portfolioImages = await query.limit(limit).offset(offset);
+
+    // Get total count and stats
+    const totalCountQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(images)
+      .innerJoin(projects, eq(images.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.createdBy, userId),
+          projectId ? eq(projects.id, projectId) : undefined
+        )
+      );
+
+    const [{ count: total }] = await totalCountQuery;
+
+    // Get stats
+    const statsQuery = db
+      .select({
+        totalImages: sql<number>`count(distinct ${images.id})`,
+        totalProjects: sql<number>`count(distinct ${projects.id})`,
+        annotatedImages: sql<number>`count(distinct case when ${annotations.id} is not null then ${images.id} end)`
+      })
+      .from(images)
+      .innerJoin(projects, eq(images.projectId, projects.id))
+      .leftJoin(annotations, eq(images.id, annotations.imageId))
+      .where(eq(projects.createdBy, userId));
+
+    const [stats] = await statsQuery;
+
+    return {
+      images: portfolioImages,
+      total,
+      stats: {
+        totalImages: Number(stats.totalImages),
+        totalProjects: Number(stats.totalProjects),
+        annotatedImages: Number(stats.annotatedImages)
+      }
+    };
   }
 }
 

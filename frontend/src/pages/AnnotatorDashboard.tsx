@@ -20,6 +20,8 @@ interface Project {
   description: string | null;
   status: 'not_started' | 'in_progress' | 'completed';
   createdAt: string;
+  totalImages: number;
+  annotatedImages: number;
 }
 
 export default function AnnotatorDashboard() {
@@ -173,9 +175,9 @@ export default function AnnotatorDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {projects.map((project) => {
                       // Calculate progress (mock for now - we'll implement later)
-                      const progress = project.status === 'completed' ? 100
-                          : project.status === 'in_progress' ? 50
-                              : 0;
+                      const progress = project.totalImages > 0
+                          ? Math.round((project.annotatedImages / project.totalImages) * 100)
+                          : 0;
 
                       return (
                           <Card key={project.id} className="hover-elevate" data-testid={`card-project-${project.id}`}>
