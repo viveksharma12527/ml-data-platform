@@ -238,6 +238,16 @@ export default function SpecialistDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation('/specialist/portfolio')}
+                  className="gap-2"
+                  data-testid="button-portfolio-nav"
+              >
+                <Image className="w-4 h-4" />
+                <span className="hidden sm:inline">Portfolio</span>
+              </Button>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">Hello</span>
                 <span className="text-sm font-medium">{user?.name}</span>
