@@ -47,6 +47,13 @@ export default function SpecialistDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
+  // Portfolio stats state
+  const [portfolioStats, setPortfolioStats] = useState<{
+    totalImages: number;
+    totalProjects: number;
+    annotatedImages: number;
+  } | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
