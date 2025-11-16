@@ -679,6 +679,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   /**
    * @swagger
+   * /api/portfolio/images:
+   *   get:
+   *     summary: Get all images across all projects for the current data specialist
+   *     tags: [Portfolio]
+   *     security:
+   *       - sessionAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: projectId
+   *         schema:
+   *           type: string
+   *         description: Filter by specific project ID (optional)
+   *       - in: query
+   *         name: sortBy
+   *         schema:
+   *           type: string
+   *           enum: [uploadedAt, projectName]
+   *         description: Sort by field (default: uploadedAt)
+   *       - in: query
+   *         name: sortOrder
+   *         schema:
+   *           type: string
+   *           enum: [asc, desc]
+   *         description: Sort order (default: desc)
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *         description: Pagination limit (default: 50)
+   *       - in: query
+   *         name: offset
+   *         schema:
+   *           type: integer
+   *         description: Pagination offset (default: 0)
+   *     responses:
+   *       200:
+   *         description: Portfolio images with statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 images:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/PortfolioImage'
+   *                 total:
+   *                   type: integer
+   *                 stats:
+   *                   $ref: '#/components/schemas/PortfolioStats'
+   *       401:
+   *         description: Unauthorized
+   *       403:
+   *         description: Access denied (data specialist only)
+   */
+  app.get("/api/portfolio/images", async (req, res) => {
+    try {
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'data_specialist') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const { projectId, sortBy, sortOrder, limit, offset } = req.query;
+
+      const result = await storage.getPortfolioImages(userId, {
+        projectId: projectId as string,
+        sortBy: sortBy as 'uploadedAt' | 'projectName',
+        sortOrder: sortOrder as 'asc' | 'desc',
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Get portfolio images error:", error);
+      res.status(500).json({ error: "Failed to get portfolio images" });
+    }
+  });
+
+  /**
+   * @swagger
    * /api/images/{id}:
    *   delete:
    *     summary: Delete an image by ID
