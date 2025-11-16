@@ -7,7 +7,7 @@ import {
   annotations, type InsertAnnotation, type Annotation,
   projectAssignments, type InsertProjectAssignment, type ProjectAssignment
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
