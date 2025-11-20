@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './swagger';
+import { registerAdminRoutes } from "./adminRoutes";
 
 const app = express();
 
@@ -73,6 +74,7 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  registerAdminRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

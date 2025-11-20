@@ -4,7 +4,6 @@ import AuthLayout from '@/components/AuthLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -14,7 +13,7 @@ export default function Register() {
     name: '',
     email: '',
     password: '',
-    role: ''
+    role: 'annotator'
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -117,22 +116,7 @@ export default function Register() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role" className="text-sm font-medium">Role</Label>
-            <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value })}
-                disabled={isLoading}
-            >
-              <SelectTrigger className="h-12" data-testid="select-role">
-                <SelectValue placeholder="Select your role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="annotator">Annotator</SelectItem>
-                <SelectItem value="data_specialist">Data Specialist</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+
 
           <Button
               type="submit"

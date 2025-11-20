@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["annotator", "data_specialist"]);
+export const userRoleEnum = pgEnum("user_role", ["annotator", "data_specialist", "admin"]);
 export const projectStatusEnum = pgEnum("project_status", ["not_started", "in_progress", "completed"]);
 
 // Users table

@@ -42,6 +42,8 @@ export default function Login() {
         setLocation('/annotator/dashboard');
       } else if (data.role === 'data_specialist') {
         setLocation('/specialist/dashboard');
+      } else if (data.role === 'admin') {
+        setLocation('/admin/assign-role');
       } else {
         throw new Error('Invalid user role');
       }

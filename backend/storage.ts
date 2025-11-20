@@ -15,6 +15,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+  updateUserRole(id: string, role: 'annotator' | 'data_specialist' | 'admin'): Promise<void>;
 
   // Project methods
   getProject(id: string): Promise<Project | undefined>;
@@ -81,6 +82,8 @@ export class DbStorage implements IStorage {
     return await db.select().from(users);
   }
 
+  async updateUserRole(id: string, role: 'annotator' | 'data_specialist' | 'admin'): Promise<void> {
+  await db.update(users).set({ role }).where(eq(users.id, id));}
   // Project methods
   async getProject(id: string): Promise<Project | undefined> {
     const [project] = await db.select().from(projects).where(eq(projects.id, id));

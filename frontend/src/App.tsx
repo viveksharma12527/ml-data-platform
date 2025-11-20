@@ -11,6 +11,8 @@ import AnnotationInterface from "@/pages/AnnotationInterface";
 import SpecialistDashboard from "@/pages/SpecialistDashboard";
 import ProjectDetails from "@/pages/ProjectDetails";
 import ImagePortfolio from "@/pages/ImagePortfolio";
+import CreateAccount from "@/pages/CreateAccount";
+import AssignRole from "@/pages/AssignRole";
 
 function Router() {
   return (
@@ -23,6 +25,9 @@ function Router() {
       <Route path="/specialist/dashboard" component={SpecialistDashboard} />
       <Route path="/specialist/portfolio" component={ImagePortfolio} />
       <Route path="/specialist/projects/:id" component={ProjectDetails} />
+      <Route path="/admin/create-account" component={CreateAccount} />
+      <Route path="/admin/assign-role" component={AssignRole} />
+      <Route path="/admin/dashboard" component={() => <Redirect to="/admin/assign-role" />} />
       <Route component={NotFound} />
     </Switch>
   );
