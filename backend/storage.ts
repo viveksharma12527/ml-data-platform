@@ -531,99 +531,104 @@ async createAnnotation(insertAnnotation: InsertAnnotation): Promise<Annotation> 
     await db.delete(images).where(eq(images.id, id));
   }
 
-  // async getPortfolioImages(userId: string, filters?: {
-  //   projectId?: string;
-  //   sortBy?: 'uploadedAt' | 'projectName';
-  //   sortOrder?: 'asc' | 'desc';
-  //   limit?: number;
-  //   offset?: number;
-  // }): Promise<{
-  //   images: Array<Image & { projectName: string; projectId: string; isAnnotated: boolean }>;
-  //   total: number;
-  //   stats: {
-  //     totalImages: number;
-  //     totalProjects: number;
-  //     annotatedImages: number;
-  //   };
-  // }> {
-  //   const {
-  //     projectId,
-  //     sortBy = 'uploadedAt',
-  //     sortOrder = 'desc',
-  //     limit = 50,
-  //     offset = 0
-  //   } = filters || {};
+  async getPortfolioImages(userId: string, filters?: {
+    projectId?: string;
+    sortBy?: 'uploadedAt' | 'projectName';
+    sortOrder?: 'asc' | 'desc';
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    images: Array<Image & { projectName: string; projectId: string; isAnnotated: boolean }>;
+    total: number;
+    stats: {
+      totalImages: number;
+      totalProjects: number;
+      annotatedImages: number;
+    };
+  }> {
+    const {
+      projectId,
+      sortBy = 'uploadedAt',
+      sortOrder = 'desc',
+      limit = 50,
+      offset = 0
+    } = filters || {};
 
-  //   // Build the base query for images with project and annotation data
-  //   const query = db
-  //     .select({
-  //       id: images.id,
-  //       projectId: images.projectId,
-  //       filename: images.filename,
-  //       url: images.url,
-  //       uploadedAt: images.uploadedAt,
-  //       projectName: projects.name,
-  //       isAnnotated: sql<boolean>`CASE WHEN ${annotations.id} IS NOT NULL THEN true ELSE false END`
-  //     })
-  //     .from(images)
-  //     .innerJoin(projects, eq(images.projectId, projects.id))
-  //     .leftJoin(annotations, eq(images.id, annotations.imageId))
-  //     .where(
-  //       and(
-  //         eq(projects.createdBy, userId),
-  //         projectId ? eq(projects.id, projectId) : undefined
-  //       )
-  //     );
+    // Build the base query for images with project and annotation data
+    // Images are now linked via projectImages table instead of direct projectId
 
-  //   // Apply ordering
-  //   const orderBy = sortOrder === 'asc' ? asc : desc;
-  //   if (sortBy === 'projectName') {
-  //     query.orderBy(orderBy(projects.name));
-  //   } else {
-  //     query.orderBy(orderBy(images.uploadedAt));
-  //   }
+    const query = db
+      .select({
+        id: images.id,
+        projectId: projectImages.projectId,
+        filename: images.filename,
+        url: images.url,
+        uploadedAt: images.uploadedAt,
+        projectName: projects.name,
+        isAnnotated: sql<boolean>`CASE WHEN ${annotations.id} IS NOT NULL THEN true ELSE false END`
+      })
+      .from(images)
+      .innerJoin(projectImages, eq(images.id,projectImages.imageId))
+      .innerJoin(projects, eq(projectImages.projectId, projects.id))
+      .leftJoin(annotations, and(eq(images.id, annotations.imageId), eq(projectImages.projectId,annotations.projectId)))
+      .where(
+        and(
+          eq(projects.createdBy, userId),
+          projectId ? eq(projects.id, projectId) : undefined
+        )
+      );
 
-  //   // Get paginated results
-  //   const portfolioImages = await query.limit(limit).offset(offset);
+    // Apply ordering
+    const orderBy = sortOrder === 'asc' ? asc : desc;
+    if (sortBy === 'projectName') {
+      query.orderBy(orderBy(projects.name));
+    } else {
+      query.orderBy(orderBy(images.uploadedAt));
+    }
 
-  //   // Get total count and stats
-  //   const totalCountQuery = db
-  //     .select({ count: sql<number>`count(*)` })
-  //     .from(images)
-  //     .innerJoin(projects, eq(images.projectId, projects.id))
-  //     .where(
-  //       and(
-  //         eq(projects.createdBy, userId),
-  //         projectId ? eq(projects.id, projectId) : undefined
-  //       )
-  //     );
+    // Get paginated results
+    const portfolioImages = await query.limit(limit).offset(offset);
 
-  //   const [{ count: total }] = await totalCountQuery;
+    // Get total count and stats
+    const totalCountQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(images)
+      .innerJoin(projectImages, eq(images.id,projectImages.imageId))
+      .innerJoin(projects, eq(projectImages.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.createdBy, userId),
+          projectId ? eq(projects.id, projectId) : undefined
+        )
+      );
 
-  //   // Get stats
-  //   const statsQuery = db
-  //     .select({
-  //       totalImages: sql<number>`count(distinct ${images.id})`,
-  //       totalProjects: sql<number>`count(distinct ${projects.id})`,
-  //       annotatedImages: sql<number>`count(distinct case when ${annotations.id} is not null then ${images.id} end)`
-  //     })
-  //     .from(images)
-  //     .innerJoin(projects, eq(images.projectId, projects.id))
-  //     .leftJoin(annotations, eq(images.id, annotations.imageId))
-  //     .where(eq(projects.createdBy, userId));
+    const [{ count: total }] = await totalCountQuery;
 
-  //   const [stats] = await statsQuery;
+    // Get stats
+    const statsQuery = db
+      .select({
+        totalImages: sql<number>`count(distinct ${images.id})`,
+        totalProjects: sql<number>`count(distinct ${projects.id})`,
+        annotatedImages: sql<number>`count(distinct case when ${annotations.id} is not null then ${images.id} end)`
+      })
+      .from(images)
+      .innerJoin(projectImages, eq(images.id, projectImages.imageId))
+      .innerJoin(projects, eq(projectImages.projectId, projects.id))
+      .leftJoin(annotations, and(eq(images.id, annotations.imageId), eq(projectImages.projectId,annotations.projectId)))
+      .where(eq(projects.createdBy, userId));
 
-  //   return {
-  //     images: portfolioImages,
-  //     total,
-  //     stats: {
-  //       totalImages: Number(stats.totalImages),
-  //       totalProjects: Number(stats.totalProjects),
-  //       annotatedImages: Number(stats.annotatedImages)
-  //     }
-  //   };
-  // }
+    const [stats] = await statsQuery;
+
+    return {
+      images: portfolioImages,
+      total: Number(total),
+      stats: {
+        totalImages: Number(stats.totalImages),
+        totalProjects: Number(stats.totalProjects),
+        annotatedImages: Number(stats.annotatedImages)
+      }
+    };
+  }
 }
 
 export const storage = new DbStorage();

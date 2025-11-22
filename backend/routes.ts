@@ -400,6 +400,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /**
+ * @swagger
+ * /api/projects/{id}/images:
+ *   post:
+ *     summary: Assign images to a project
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Project ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InsertProjectImages'
+ *     responses:
+ *       201:
+ *         description: Images assigned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
 
   app.post("/api/projects/:id/images", authenticateToken, requireRole(["data_specialist"]), async (req,res) => {
     try {
@@ -788,28 +826,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUser(userId);
-      if (!user || user.role !== 'data_specialist') {
-        return res.status(403).json({ error: "Access denied" });
-      }
+      // if (!user || user.role !== 'data_specialist') {
+      //   return res.status(403).json({ error: "Access denied" });
+      // }
 
       const { projectId, sortBy, sortOrder, limit, offset } = req.query;
 
-      // const result = await storage.getPortfolioImages(userId, {
-      //   projectId: projectId as string,
-      //   sortBy: sortBy as 'uploadedAt' | 'projectName',
-      //   sortOrder: sortOrder as 'asc' | 'desc',
-      //   limit: limit ? parseInt(limit as string) : undefined,
-      //   offset: offset ? parseInt(offset as string) : undefined,
-      // });
+      const result = await storage.getPortfolioImages(userId, {
+        projectId: projectId as string,
+        sortBy: sortBy as 'uploadedAt' | 'projectName',
+        sortOrder: sortOrder as 'asc' | 'desc',
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined,
+      });
 
-      const result = {};
+      // const result = {};
       res.json(result);
     } catch (error: any) {
       console.error("Get portfolio images error:", error);
       res.status(500).json({ error: "Failed to get portfolio images" });
     }
   });
-
+  
+  /**
+ * @swagger
+ * /api/images:
+ *   get:
+ *     summary: Get all images (Data Specialist only)
+ *     tags: [Images]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all images
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Image'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
   app.get("/api/images", authenticateToken, requireRole(["data_specialist"]),async (req, res) => {
     try {
       const images = await storage.getAllImages();     
@@ -1003,7 +1065,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-
+  /**
+ * @swagger
+ * /api/label-types:
+ *   get:
+ *     summary: Get all label types
+ *     tags: [Label Types]
+ *     responses:
+ *       200:
+ *         description: List of all label types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Label'
+ *       500:
+ *         description: Server error
+ */
   app.get('/api/label-types/', async (req,res) => {
     try {
       const labels = await storage.getAllLabelTypes();
@@ -1028,6 +1107,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types/{id}:
+ *   get:
+ *     summary: Get a specific label type by ID
+ *     tags: [Label Types]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label type ID
+ *     responses:
+ *       200:
+ *         description: Label type details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Label'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.get('/api/label-types/:id', authenticateToken, async (req,res) =>{
     try {
         const { id } = req.params;
@@ -1052,6 +1159,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types:
+ *   post:
+ *     summary: Create a new label type (Data Specialist only)
+ *     tags: [Label Types]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InsertLabel'
+ *     responses:
+ *       201:
+ *         description: Label type created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
   app.post('/api/label-types', authenticateToken, requireRole(['data_specialist']), validate(insertLabelSchema) , async (req,res) =>{
     try {
       const { name, description } = req.body;
@@ -1072,6 +1209,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types/{id}:
+ *   patch:
+ *     summary: Update a label type (Data Specialist only)
+ *     tags: [Label Types]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label type ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InsertLabel'
+ *     responses:
+ *       200:
+ *         description: Label type updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
   app.patch('/api/label-types/:id', authenticateToken, requireRole(['data_specialist']), validate(updateLabelSchema) , async (req,res) =>{
      try {
       const { id } = req.params;
@@ -1092,6 +1267,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types:
+ *   delete:
+ *     summary: Delete multiple label types (Data Specialist only)
+ *     tags: [Label Types]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ids
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 minItems: 1
+ *     responses:
+ *       204:
+ *         description: Label types deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
   app.delete('/api/label-types', authenticateToken, requireRole(['data_specialist']), async (req, res)=>{
     try {
       const { ids } = req.body;
@@ -1116,6 +1330,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // app Label Class Management
+
+  /**
+ * @swagger
+ * /api/label-types/{id}/classes:
+ *   get:
+ *     summary: Get classes for a label type (Data Specialist only)
+ *     tags: [Label Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label type ID
+ *     responses:
+ *       200:
+ *         description: List of label classes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/LabelClass'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.get('/api/label-types/:id/classes', authenticateToken, requireRole(['data_specialist']), async (req,res) =>{
     try {
       const { id } = req.params;
@@ -1142,6 +1391,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types/{id}/classes:
+ *   post:
+ *     summary: Add a class to a label type (Data Specialist only)
+ *     tags: [Label Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label type ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/InsertLabelClass'
+ *     responses:
+ *       201:
+ *         description: Class added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
   app.post('/api/label-types/:id/classes', authenticateToken, requireRole(['data_specialist']), validate(insertLabelClassSchema, {mergeData: (req) => ({ labelTypeId: req.params.id })}), 
    async (req,res) =>{
     try {
@@ -1161,6 +1448,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  /**
+ * @swagger
+ * /api/label-types/{id}/classes/{classId}:
+ *   delete:
+ *     summary: Remove a class from a label type (Data Specialist only)
+ *     tags: [Label Classes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label type ID
+ *       - in: path
+ *         name: classId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Label class ID
+ *     responses:
+ *       200:
+ *         description: Class removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.delete('/api/label-types/:id/classes/:classId', authenticateToken, requireRole(['data_specialist']), async (req,res) =>{
     try {
       const { id, classId } = req.params;
@@ -1284,6 +1610,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //       });
   //     }
   // });
+  /**
+ * @swagger
+ * /api/annotation/project/{projectId}:
+ *   get:
+ *     summary: Get annotations for a project (Annotator only)
+ *     tags: [Annotations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: List of annotations for the project
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Annotation'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.get('/api/annotation/project/:projectId', authenticateToken, requireRole(['annotator']), async (req,res) => {
     try {
           const { id } = req.params;
@@ -1308,6 +1668,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
       }
   });
+
+  /**
+ * @swagger
+ * /api/annotation/{id}:
+ *   get:
+ *     summary: Get a specific annotation (Annotator only)
+ *     tags: [Annotations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Annotation ID
+ *     responses:
+ *       200:
+ *         description: Annotation details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Annotation'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.get('/api/annotation/:id', authenticateToken, requireRole(['annotator']), async (req,res) => {
     try {
           const { id } = req.params;
@@ -1332,6 +1725,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
       }
   });
+
+  /**
+ * @swagger
+ * /api/annotation/{id}:
+ *   delete:
+ *     summary: Delete an annotation (Annotator only)
+ *     tags: [Annotations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Annotation ID
+ *     responses:
+ *       200:
+ *         description: Annotation deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         description: Server error
+ */
   app.delete('/api/annotation/:id', authenticateToken, requireRole(['annotator']), async (req,res) => {
     try {
         const { id } = req.params;
@@ -1354,6 +1780,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 // Statistics
+
+/**
+ * @swagger
+ * /api/annotation/project/{projectId}/stats:
+ *   get:
+ *     summary: Get annotation statistics for a project (Data Specialist only)
+ *     tags: [Annotations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: Annotation statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalAnnotations:
+ *                   type: integer
+ *                 completedImages:
+ *                   type: integer
+ *                 totalImages:
+ *                   type: integer
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
 app.get('/api/annotation/project/:projectId/stats', authenticateToken, requireRole(['data_specialist']), async (req,res)=>{
   try {
       const { projectId } = req.params;
