@@ -111,6 +111,11 @@ export interface IStorage {
   // Project assignment methods
   assignUserToProject(assignment: InsertProjectAssignment): Promise<ProjectAssignment>;
   getProjectAssignments(projectId: string): Promise<ProjectAssignment[]>;
+
+
+  // ML Engineer Methods 
+ getEnrichedAnnotationsByImageIds(imageIds: string[]): Promise<any[]> 
+ getAllProjectsWithManifest(): Promise<any[]>
 }
 
 export class DbStorage implements IStorage {
@@ -686,6 +691,82 @@ const query = db
       }
     };
   }
+
+
+  /* 
+    ML Engineer endpoints
+  */
+
+  // Get "Enriched" labels for ONE OR MANY images
+  async getEnrichedAnnotationsByImageIds(imageIds: string[]): Promise<any[]> {
+    if (!imageIds || imageIds.length === 0) {
+      return [];
+    }
+
+    const result = await db
+      .select({
+        annotationId: annotations.id,
+        imageId: annotations.imageId,
+        labelClass: labelClasses.name,
+        labelType: labels.name,
+        annotatedAt: annotations.annotatedAt,
+        annotatorId: annotations.userId
+      })
+      .from(annotations)
+      .innerJoin(labelClasses, eq(annotations.labelClassesId, labelClasses.id))
+      .innerJoin(labels, eq(labelClasses.labelTypeId, labels.id))
+      .where(inArray(annotations.imageId, imageIds));
+
+    return result;
+  }
+
+
+// Get All Projects with their Images and Label Type
+async getAllProjectsWithManifest(): Promise<any[]> {
+  
+  // Get the base project info + Label Type info
+  const projectsList = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      status: projects.status,
+      createdAt: projects.createdAt,
+      labelType: {
+        id: labels.id,
+        name: labels.name,
+        description: labels.description
+      },
+      createdBy: {
+        id: users.id,
+        email: users.email
+      }
+    })
+    .from(projects)
+    .leftJoin(labels, eq(projects.labelTypeId, labels.id))
+    .leftJoin(users, eq(projects.createdBy, users.id));
+
+  // For each project, fetch the list of assigned images -- IN PARALLEL for effeciency 
+  const fullManifest = await Promise.all(
+    projectsList.map(async (project) => {
+      // Get all images assigned to this specific project
+      const imagesInProject = await this.getImagesByProject(project.id);
+      
+      return {
+        ...project,
+        // The requirement says "including images", so we attach the list here
+        images: imagesInProject.map(img => ({
+          id: img.id,
+          filename: img.filename,
+          url: img.url
+        }))
+      };
+    })
+  );
+
+  return fullManifest;
+}
+
 }
 
 export const storage = new DbStorage();

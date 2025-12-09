@@ -87,4 +87,8 @@ export async function getFileUrl(filename: string): Promise<string> {
     }
 }
 
+export async function getFileStream(filename: string) {
+  return await minioClient.getObject(BUCKET_NAME, filename);
+}
+
 export { minioClient, BUCKET_NAME };

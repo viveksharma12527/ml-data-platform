@@ -15,8 +15,11 @@ npm install
 
 # 2. Set Up Environment Variables
 echo "Setting up environment variables..."
-echo "DATABASE_URL=\"postgres://user:password@localhost:5434/ml-data-platform\"" > .env
-echo "JWT_SECRET=ThisIsJustAJWT_SECRET" > .env
+cat <<EOF > .env
+DATABASE_URL="postgres://user:password@localhost:5434/ml-data-platform"
+JWT_SECRET=ThisIsJustAJWT_SECRET
+EOF
+
 source .env
 
 # 3. Start the Database

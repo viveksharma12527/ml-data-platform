@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import { insertUserSchema, insertProjectSchema, insertLabelSchema, insertImageSchema, insertProjectImagesSchema, insertAnnotationSchema, insertLabelClassSchema, insertProjectImageSchema } from "@shared/schema";
 import multer from 'multer';
-import { uploadFile, deleteFile, initializeMinio } from './services/minio';
+import { uploadFile, deleteFile, initializeMinio, getFileStream } from './services/minio';
 import { extractImagesFromZip } from './services/zip';
 
 import jwt from "jsonwebtoken";
@@ -1922,6 +1922,292 @@ app.get('/api/annotation/project/:projectId/stats', authenticateToken, requireRo
           error: 'Error fetching annotation statistics'
       });
     }
+});
+
+
+
+
+// ML Engineer Endpoints
+ /**
+ * @swagger
+ * /api/ML-Engineer/images:
+ *   get:
+ *     summary: Get all images (ML Engineer only)
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all images
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Image'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied
+ *       500:
+ *         description: Server error
+ */
+
+app.get("/api/ML-Engineer/images", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+    try {
+      const allImages = await storage.getAllImages();
+      res.json({
+        success: true,
+        count: allImages?.length || 0,
+        data: allImages
+      });
+    } catch (error: any) {
+      console.error("ML: Get all images error:", error);
+      res.status(500).json({ error: "Failed to get image manifest" });
+    }
+  });
+
+
+/**
+ * @swagger
+ * /api/ML-Engineer/{id}/download:
+ *   get:
+ *     summary: Download the actual binary image file
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The UUID of the image to download
+ *     responses:
+ *       200:
+ *         description: The binary image file
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Image not found
+ */
+app.get("/api/ML-Engineer/:id/download", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const image = await storage.getImage(id);
+    
+    if (!image) {
+      return res.status(404).json({ error: "Image not found" });
+    }
+
+    const urlParts = image.url.split('/');
+    const filename = urlParts[urlParts.length - 1];
+
+    if (!filename) {
+      return res.status(400).json({ error: "Invalid file path" });
+    }
+
+    const ext = filename.split('.').pop()?.toLowerCase();
+    let contentType = 'application/octet-stream';
+    if (ext === 'png') contentType = 'image/png';
+    if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const fileStream = await getFileStream(filename);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (err) => {
+      console.error("Stream error:", err);
+      res.end(); 
+    });
+
+  } catch (error: any) {
+    console.error("ML: Download image error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to download image" });
+    }
+  }
+});
+
+
+/**
+ * @swagger
+ * /api/ML-Engineer/label-types:
+ *   get:
+ *     summary: Get all label definitions (Schema/Ontology)
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all label types available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+app.get("/api/ML-Engineer/label-types", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+  try {
+    const labelTypes = await storage.getAllLabelTypes();
+    res.json({
+      success: true,
+      count: labelTypes.length,
+      data: labelTypes
+    });
+  } catch (error: any) {
+    console.error("ML: Get label types error:", error);
+    res.status(500).json({ error: "Failed to fetch label types" });
+  }
+});
+
+
+/**
+ * @swagger
+ * /api/ML-Engineer/images/labels:
+ *   post:
+ *     summary: Get ground truth labels for a list of images (Bulk)
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - imageIds
+ *             properties:
+ *               imageIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 example: ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"]
+ *     responses:
+ *       200:
+ *         description: List of annotations for the requested images
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+app.post("/api/ML-Engineer/images/labels/", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+  try {
+    const { imageIds } = req.body;
+
+    if (!Array.isArray(imageIds)) {
+      return res.status(400).json({ error: "imageIds must be an array" });
+    }
+
+    const annotations = await storage.getEnrichedAnnotationsByImageIds(imageIds);
+
+    res.json({
+      success: true,
+      count: annotations.length,
+      data: annotations
+    });
+  } catch (error: any) {
+    console.error("ML: Bulk label fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch bulk labels" });
+  }
+});
+
+
+/**
+ * @swagger
+ * /api/ML-Engineer/images/labels/{imageId}:
+ *   get:
+ *     summary: Get ground truth labels for a specific image
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: imageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Annotations for the specific image
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+app.get("/api/ML-Engineer/images/labels/:imageId", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+  try {
+    const annotations = await storage.getEnrichedAnnotationsByImageIds([req.params.imageId]);
+    
+    res.json({
+      success: true,
+      imageId: req.params.imageId,
+      annotations: annotations
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch labels" });
+  }
+});
+
+
+/**
+ * @swagger
+ * /api/ML-Engineer/projects:
+ *   get:
+ *     summary: Get full project manifest (Projects + Images + Label Types)
+ *     tags: [ML Engineer]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: A complex manifest object useful for setting up training jobs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: 
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: 
+ *                         type: string
+ *                         format: uuid
+ *                       name: 
+ *                         type: string
+ *                       labelType:
+ *                         $ref: '#/components/schemas/Label'
+ *                       images:
+ *                         type: array
+ *                         items:
+ *                           $ref: '#/components/schemas/Image'
+ */
+app.get("/api/ML-Engineer/projects", authenticateToken, requireRole(["ml_engineer"]), async (req, res) => {
+  try {
+    const projectManifest = await storage.getAllProjectsWithManifest();
+    
+    res.json({
+      success: true,
+      count: projectManifest.length,
+      data: projectManifest
+    });
+  } catch (error: any) {
+    console.error("ML: Get project manifest error:", error);
+    res.status(500).json({ error: "Failed to generate project manifest" });
+  }
 });
 
   const httpServer = createServer(app);
